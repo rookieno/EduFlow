@@ -89,6 +89,20 @@ Task를 중지해도 남아 있는 ALB나 NAT의 비용이 발생할 수 있으�
   두 컨테이너를 함께 교체하므로 장애 복구와 배포 중 예약 처리가 잠시 지연될 수 있습니다.
   발송량이 늘어 독립 확장이 필요해지면 Worker 전용 서비스를 분리합니다.
   [ECS 애플리케이션 구성](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/application_architecture.html)
+- **AWS Elastic Beanstalk Standard 모드** — EC2 기반으로 웹 앱의 배포, 상태 확인,
+  로드밸런서와 자동 확장을 관리할 수 있습니다. 서울 리전 Linux x86 온디맨드 730시간을
+  기준으로 웹 2대와 메일 처리 1대를 각각 `t3.small`과 gp3 10 GiB로 구성하면 월
+  약 **$59.68**입니다. 현재 Fargate 3개 Task의 **$62.17**과 차이는 약 **$2.50**이며,
+  두 금액에서 ALB·NAT·DB·브로커·메일 등 공통 비용과 EC2 CPU 크레딧 추가 요금은 제외했습니다.
+  EC2 한 대에 웹과 메일 처리를 함께 두면 약 **$19.89**로 줄지만, 인스턴스 장애 시
+  두 기능이 함께 중단됩니다. Beanstalk의 기본 Worker 환경은 SQS 메시지를 앱에 HTTP
+  요청으로 전달하므로 현재 Celery Worker와 Beat를 쓰려면 별도로 구성해야 합니다.
+  EduFlow는 이중화 구성의 비용 차이가 작고 Celery 실행 단위를 직접 관리하기 쉬워
+  ECS + Fargate를 운영안으로 유지합니다.
+  [Beanstalk 요금](https://aws.amazon.com/elasticbeanstalk/pricing/) ·
+  [Beanstalk Worker 환경](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features-managing-env-tiers.html) ·
+  [서울 ECS 요금표](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/current/ap-northeast-2/index.json) ·
+  [서울 EC2 요금표](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/ap-northeast-2/index.json)
 - **EC2 단일 인스턴스와 Docker Compose** — 짧은 시연이나 소규모 검증에는 배포가 단순합니다.
   운영에서는 인스턴스 장애와 패치의 영향이 웹·발송에 함께 미치므로 Fargate를 선택했습니다.
 - **SQS를 Celery 브로커로 사용** — 큐 인스턴스 관리 부담을 줄일 수 있지만 브로커 설정과
