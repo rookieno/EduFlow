@@ -62,8 +62,8 @@ def test_export_uses_applied_filter_and_writes_plain_text(admin_client, applicat
 
     # When the operator exports with a receipt filter and a page number.
     with (
-        patch("eduflow.apps.applications.google_sheets.Credentials") as credentials,
-        patch("eduflow.apps.applications.google_sheets.AuthorizedSession") as session,
+        patch("eduflow.modules.google_sheets.gateway.Credentials") as credentials,
+        patch("eduflow.modules.google_sheets.gateway.AuthorizedSession") as session,
     ):
         google = session.return_value.__enter__.return_value
         exported = admin_client.post(endpoint + f"?q={included.pk}&page=9")
@@ -114,8 +114,8 @@ def test_export_bounds_rows_and_reports_failed_google_requests(admin_client, app
 
     # When an operator attempts an unfiltered export, then selects just one record.
     with (
-        patch("eduflow.apps.applications.google_sheets.Credentials") as credentials,
-        patch("eduflow.apps.applications.google_sheets.AuthorizedSession") as session,
+        patch("eduflow.modules.google_sheets.gateway.Credentials") as credentials,
+        patch("eduflow.modules.google_sheets.gateway.AuthorizedSession") as session,
     ):
         google = session.return_value.__enter__.return_value
         google.post.side_effect = Timeout("external detail")

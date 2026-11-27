@@ -27,12 +27,15 @@ from eduflow.api.v1.permissions import (
 )
 from eduflow.apps.applications.choices import ApplicationStatus
 from eduflow.apps.applications.exceptions import (
-    IntakeClosed, SheetsExportFailed, SheetsExportLimitExceeded, SheetsExportNotConfigured,
-    SubmissionConflict,
+    IntakeClosed, SheetsExportLimitExceeded, SubmissionConflict,
 )
 from eduflow.apps.applications.models import Application, ApplicationReminder
 from eduflow.apps.courses.choices import IntakeStatus
 from eduflow.apps.courses.models import Course
+from eduflow.modules.google_sheets.exceptions import (
+    GoogleSheetConfigurationError,
+    GoogleSheetRequestError,
+)
 
 from eduflow.api.v1.applications.serializers import (
     ApplicationFiltersSerializer,
@@ -120,12 +123,12 @@ class ApplicationViewSet(
                 {"code": "EXPORT_LIMIT", "message": f"{exc.args[0]}건 이하로 검색 범위를 줄여 주세요."},
                 status=HTTP_400_BAD_REQUEST,
             )
-        except SheetsExportNotConfigured:
+        except GoogleSheetConfigurationError:
             return Response(
                 {"code": "SHEETS_NOT_CONFIGURED", "message": "Google Sheets 연동 설정을 확인해 주세요."},
                 status=HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except SheetsExportFailed:
+        except GoogleSheetRequestError:
             return Response(
                 {"code": "SHEETS_EXPORT_FAILED",
                  "message": "내보내기 결과를 확인하지 못했습니다. 대상 Google Sheets 문서를 확인해 주세요."},

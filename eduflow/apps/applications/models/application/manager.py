@@ -1,9 +1,11 @@
 import json
+from dataclasses import dataclass
 from datetime import date
 from hashlib import sha256
 from typing import TYPE_CHECKING
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, models, transaction
@@ -17,14 +19,20 @@ from eduflow.apps.applications.exceptions import (
     SheetsExportLimitExceeded,
     SubmissionConflict,
 )
-from eduflow.apps.applications.google_sheets import SheetsExportResult, create_export_tab
 from eduflow.apps.applications.models.application.queryset import ApplicationQuerySet
+from eduflow.modules.google_sheets.gateway import GoogleSheetGateWay
 
 if TYPE_CHECKING:
     from eduflow.apps.applications.models.application._model import Application
 
 
 MAX_SHEETS_APPLICATIONS = 500
+
+
+@dataclass(frozen=True)
+class SheetsExportResult:
+    count: int
+    sheet_url: str
 
 
 class ApplicationManager(models.Manager.from_queryset(ApplicationQuerySet)):
@@ -43,7 +51,13 @@ class ApplicationManager(models.Manager.from_queryset(ApplicationQuerySet)):
                 timezone.localtime(application.completed_at).isoformat(timespec="minutes")
                 if application.completed_at else "",
             ))
-        return create_export_tab(rows)
+        gateway = GoogleSheetGateWay(
+            spreadsheet_id=settings.GOOGLE_SHEETS_SPREADSHEET_ID,
+            credentials_path=settings.GOOGLE_APPLICATION_CREDENTIALS,
+        )
+        title = f"신청 목록 {timezone.localtime():%Y-%m-%d %H-%M} {uuid4().hex[:8]}"
+        sheet_url = gateway.create_tab(title=title, rows=rows)
+        return SheetsExportResult(count=len(rows) - 1, sheet_url=sheet_url)
 
     def submit(
         self,
