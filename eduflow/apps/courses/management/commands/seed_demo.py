@@ -27,8 +27,14 @@ class DemoCourse:
     curriculum: tuple[str, ...]
     capacity: int
     deadline_days: int
-    application_count: int
+    application_statuses: tuple[ApplicationStatus, ...]
 
+
+_STANDARD_STATUSES = (
+    ApplicationStatus.RECEIVED,
+    ApplicationStatus.IN_REVIEW,
+    ApplicationStatus.COMPLETED,
+)
 
 _COURSES = (
     DemoCourse(
@@ -39,46 +45,39 @@ _COURSES = (
             "화면과 서비스 흐름 설계",
             "프로토타입 제작과 사용자 피드백",
         ),
-        24, 14, 3,
+        24, 14, _STANDARD_STATUSES,
     ),
     DemoCourse(
         "ux-research-workshop", "UX 리서치 워크숍",
         "인터뷰부터 문제 정의까지 사용자 관점에서 설계합니다.",
         ("조사 질문 만들기", "사용자 인터뷰 실습", "인사이트 정리"),
-        18, 9, 4,
+        18, 9, (*_STANDARD_STATUSES, ApplicationStatus.RECEIVED),
     ),
     DemoCourse(
         "python-data-studio", "파이썬 데이터 스튜디오",
         "데이터를 정리하고 작은 분석 보고서를 완성합니다.",
         ("데이터 기초", "표와 그래프 읽기", "결과 발표"),
-        20, 15, 3,
+        20, 15, _STANDARD_STATUSES,
     ),
     DemoCourse(
         "product-storytelling", "제품 스토리텔링",
         "복잡한 기능을 이해하기 쉬운 제품 이야기로 전달합니다.",
         ("청중과 메시지", "사용자 여정 구성", "피드백과 수정"),
-        12, 6, 3,
+        12, 6, _STANDARD_STATUSES,
     ),
     DemoCourse(
         "service-prototype-clinic", "서비스 프로토타입 클리닉",
         "한 가지 가설을 작동하는 화면으로 검증합니다.",
         ("가설 선택", "프로토타입 제작", "검증 결과 공유"),
-        1, 8, 1,
+        1, 8, (ApplicationStatus.COMPLETED,),
     ),
     DemoCourse(
         "design-sprint-archive", "디자인 스프린트 실습",
         "짧은 스프린트로 아이디어를 구체화합니다.",
         ("스프린트 계획", "아이디어 스케치", "검증 질문 작성"),
-        16, -2, 2,
+        16, -2, (ApplicationStatus.RECEIVED, ApplicationStatus.IN_REVIEW),
     ),
 )
-
-_STATUSES = (
-    ApplicationStatus.RECEIVED,
-    ApplicationStatus.IN_REVIEW,
-    ApplicationStatus.COMPLETED,
-)
-
 
 def _demo_submission_id(sample: DemoCourse, slot: int) -> UUID:
     return uuid5(NAMESPACE_URL, f"eduflow:demo:{sample.slug}:{slot}")
@@ -87,7 +86,7 @@ def _demo_submission_id(sample: DemoCourse, slot: int) -> UUID:
 def _delete_demo_applications(course: Course, sample: DemoCourse) -> int:
     sample_ids = (
         _demo_submission_id(sample, slot)
-        for slot in range(1, sample.application_count + 1)
+        for slot in range(1, len(sample.application_statuses) + 1)
     )
     removable = [
         pk
@@ -162,13 +161,11 @@ def _seed_mail_history(application: Application) -> bool:
 def _seed_applications(
     course: Course, sample: DemoCourse, seeded_at: datetime, fake: "Faker"
 ) -> tuple[int, int]:
-    used_places = course.applications.count()
     # Archived samples represent applications accepted before their deadline.
     received_at = min(seeded_at, course.application_deadline_at) - timedelta(hours=1)
     applications_created = 0
     reminders_created = 0
-    for index in range(sample.application_count):
-        slot = index + 1
+    for slot, status in enumerate(sample.application_statuses, start=1):
         submission_id = _demo_submission_id(sample, slot)
         fingerprint = sha256(submission_id.bytes).hexdigest()
         email = f"{sample.slug}-{slot}@example.invalid"
@@ -181,9 +178,8 @@ def _seed_applications(
             ):
                 reminders_created += _seed_mail_history(existing)
             continue
-        if not course.is_published or used_places + applications_created >= course.capacity:
+        if not course.is_published:
             continue
-        status = _STATUSES[index % len(_STATUSES)]
         completed_at = None
         if status == ApplicationStatus.COMPLETED:
             completed_at = received_at + timedelta(minutes=30)
@@ -193,7 +189,7 @@ def _seed_applications(
             name=_demo_name(fake),
             email=email,
             address=f"화면 테스트용 예시 주소 {slot}",
-            contact_date=localdate(seeded_at) + timedelta(days=index),
+            contact_date=localdate(seeded_at) + timedelta(days=slot - 1),
             status=status,
             completed_at=completed_at,
         )

@@ -1,6 +1,5 @@
-from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models, router, transaction
+from django.db import models
 
 from eduflow.apps.courses.models.course.mixins import CourseIntakeMixin
 
@@ -34,8 +33,8 @@ class Course(CourseIntakeMixin, models.Model):
         "공개 여부", default=False, help_text="교육 소개 페이지를 공개할지 결정합니다."
     )
     capacity = models.PositiveIntegerField(
-        "신청 정원", validators=[MinValueValidator(1)],
-        help_text="이 교육에 접수할 수 있는 최대 신청 건수입니다.",
+        "교육 정원", validators=[MinValueValidator(1)],
+        help_text="완료 상태의 신청 건수가 이 인원에 도달하면 신규 신청 접수를 마감합니다.",
     )
     application_deadline_at = models.DateTimeField(
         "접수 마감 시각", help_text="이 시각부터 교육의 신규 신청 접수를 종료합니다."
@@ -52,38 +51,3 @@ class Course(CourseIntakeMixin, models.Model):
 
     def __str__(self) -> str:
         return self.title
-
-    def clean(self) -> None:
-        super().clean()
-        if self.pk is not None:
-            self._validate_capacity(self._state.db)
-
-    def save(
-        self,
-        *,
-        force_insert: bool | tuple[type[models.Model], ...] = False,
-        force_update: bool = False,
-        using: str | None = None,
-        update_fields: set[str] | list[str] | tuple[str, ...] | None = None,
-    ) -> None:
-        save_options = {
-            "force_insert": force_insert,
-            "force_update": force_update,
-            "using": using,
-            "update_fields": update_fields,
-        }
-        if self.pk is None or (update_fields is not None and "capacity" not in update_fields):
-            super().save(**save_options)
-            return
-
-        using = using or router.db_for_write(type(self), instance=self)
-        save_options["using"] = using
-        with transaction.atomic(using=using):
-            # Serialize capacity changes with the application submission path.
-            type(self).objects.using(using).select_for_update().filter(pk=self.pk).first()
-            self._validate_capacity(using)
-            super().save(**save_options)
-
-    def _validate_capacity(self, using: str | None) -> None:
-        if self.capacity is not None and self.applications.using(using).count() > self.capacity:
-            raise ValidationError({"capacity": "정원은 현재 신청 수보다 작을 수 없습니다."})

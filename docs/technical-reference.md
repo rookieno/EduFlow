@@ -44,7 +44,8 @@ API 접두사는 `/api/v1/`입니다. 날짜 입력 형식은 `YYYY-MM-DD`입니
 - `POSTGRES_DB`의 기본값은 `eduflow`입니다. `POSTGRES_HOST`와 `POSTGRES_USER`를
   비우면 로컬 PostgreSQL 소켓과 현재 OS 계정을 사용합니다. 별도 호스트에 연결할 때는
   `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`를 설정합니다.
-- `Application.objects.submit(...)`은 교육 행을 잠근 뒤 마감과 정원을 확인합니다.
+- `Application.objects.submit(...)`은 교육 행을 잠근 뒤 공개 여부, 마감 시각, 해당 교육의
+  완료 신청 건수를 확인합니다. 완료 건수가 정원 이상이면 신규 접수에 `409 COURSE_FULL`을 반환합니다.
   최초 요청과 같은 식별자·입력으로 다시 요청하면 기존 신청을 돌려주며, 같은 식별자로
   다른 내용을 제출하면 충돌을 알립니다.
 - 운영자가 신청 상태를 완료로 바꾼 시각은 별도로 기록합니다. 완료 상태에서 다른 정보만

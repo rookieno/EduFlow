@@ -48,9 +48,14 @@ def test_seed_demo_populates_all_courses_and_does_not_duplicate():
     assert not Application.objects.exclude(status=ApplicationStatus.COMPLETED).filter(
         completed_at__isnull=False,
     ).exists()
-    full = Course.objects.get(slug="service-prototype-clinic")
+    clinic = Course.objects.get(slug="service-prototype-clinic")
+    open_course = Course.objects.get(slug="digital-project-lab")
     archived = Course.objects.get(slug="design-sprint-archive")
-    assert full.intake_status() == IntakeStatus.COURSE_FULL
+    assert clinic.applications.get().status == ApplicationStatus.COMPLETED
+    assert clinic.capacity == 1
+    assert clinic.application_deadline_at > now()
+    assert clinic.intake_status() == IntakeStatus.COURSE_FULL
+    assert open_course.intake_status() == IntakeStatus.OPEN
     assert archived.intake_status() == IntakeStatus.APPLICATION_DEADLINE_PASSED
     before_deadline = archived.applications.filter(
         created_at__lt=archived.application_deadline_at,
@@ -72,11 +77,11 @@ def test_seed_demo_populates_all_courses_and_does_not_duplicate():
 
 
 def test_seed_demo_backfills_missing_history_for_existing_demo_applications():
-    # Given existing demo applications in a full course and one with an edited recipient.
+    # Given a demo application in the clinic and another with an edited recipient.
     call_command("seed_demo", stdout=StringIO())
-    full = Course.objects.get(slug="service-prototype-clinic").applications.get()
+    clinic_application = Course.objects.get(slug="service-prototype-clinic").applications.get()
     edited = Application.objects.get(email="digital-project-lab-1@example.invalid")
-    full.reminders.all().delete()
+    clinic_application.reminders.all().delete()
     edited.reminders.all().delete()
     Application.objects.filter(pk=edited.pk).update(email="edited@example.com")
 
@@ -85,15 +90,15 @@ def test_seed_demo_backfills_missing_history_for_existing_demo_applications():
     call_command("seed_demo", stdout=output)
 
     # Then it fills only the missing demo history and keeps the existing applications.
-    assert full.reminders.get().status == ReminderStatus.SENT
+    assert clinic_application.reminders.get().status == ReminderStatus.CANCELLED
     assert not edited.reminders.exists()
     assert Application.objects.count() == 16
     assert ApplicationReminder.objects.count() == 15
     assert "교육 0개, 샘플 신청 0건, 메일 발송 내역 1건" in output.getvalue()
 
 
-def test_seed_demo_preserves_existing_applications_and_capacity():
-    # Given one occupied seat in a pre-existing course.
+def test_seed_demo_preserves_existing_applications_at_capacity():
+    # Given a course with one real application matching its planned capacity.
     call_command("seed_demo", stdout=StringIO())
     course = Course.objects.get(slug="service-prototype-clinic")
     course.applications.all().delete()
@@ -102,17 +107,25 @@ def test_seed_demo_preserves_existing_applications_and_capacity():
         email="existing@example.com", address="기존 주소", contact_date=localdate(),
     )
 
+    assert course.intake_status() == IntakeStatus.OPEN
+
     # When the demo command runs again.
     call_command("seed_demo", stdout=StringIO())
 
-    # Then the existing registration remains and the capacity is respected.
-    assert course.applications.get().pk == existing.pk
-    assert Course.objects.get(pk=course.pk).capacity == 1
+    # Then the completed sample closes intake and the real application is preserved.
+    assert set(course.applications.values_list("email", flat=True)) == {
+        existing.email, "service-prototype-clinic-1@example.invalid",
+    }
+    existing.refresh_from_db()
+    assert existing.status == ApplicationStatus.RECEIVED
+    assert course.intake_status() == IntakeStatus.COURSE_FULL
 
 
 def test_seed_reset_recreates_only_demo_data_and_records_completion_after_receipt():
     # Given sample records, one edited sample, and a regular application.
     call_command("seed_demo", stdout=StringIO())
+    clinic = Course.objects.get(slug="service-prototype-clinic")
+    clinic.applications.update(status=ApplicationStatus.RECEIVED, completed_at=None)
     regular_course = Course.objects.get(slug="ux-research-workshop")
     regular, _ = Application.objects.submit(
         course_slug=regular_course.slug,
@@ -144,6 +157,7 @@ def test_seed_reset_recreates_only_demo_data_and_records_completion_after_receip
     assert Course.objects.filter(pk=regular_course.pk).exists()
     assert regular_course.applications.count() == 1
     assert Application.objects.filter(email="digital-project-lab-1@example.invalid").exists()
+    assert Course.objects.get(slug=clinic.slug).intake_status() == IntakeStatus.COURSE_FULL
     completed = Application.objects.filter(status=ApplicationStatus.COMPLETED)
     assert completed.exists()
     assert not completed.filter(completed_at__isnull=True).exists()

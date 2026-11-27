@@ -7,6 +7,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
+from eduflow.apps.applications.choices import ApplicationStatus
 from eduflow.apps.applications.models import Application
 from eduflow.apps.courses.models import Course
 
@@ -169,22 +170,10 @@ def test_past_contact_date_returns_field_error(browser, payload):
     assert not Application.objects.exists()
 
 
-@pytest.mark.parametrize(
-    ("state", "code", "label"),
-    [
-        ("expired", "APPLICATION_DEADLINE_PASSED", "신청 기간 종료"),
-        ("full", "COURSE_FULL", "정원 마감"),
-    ],
-)
-def test_closed_course_blocks_new_submissions(browser, course, payload, state, code, label):
-    # Given 신청 화면을 연 뒤 교육이 기간 또는 정원에 의해 마감된다.
-    if state == "expired":
-        course.application_deadline_at = timezone.now()
-        course.save(update_fields=["application_deadline_at"])
-    else:
-        Application.objects.submit(**{
-            **payload, "submission_id": uuid4(), "contact_date": timezone.localdate(),
-        })
+def test_deadline_blocks_new_submissions(browser, course, payload):
+    # Given 신청 화면을 연 뒤 접수 마감 시각이 된다.
+    course.application_deadline_at = timezone.now()
+    course.save(update_fields=["application_deadline_at"])
 
     # When 소개를 다시 열고, 기존 화면에서 새 신청을 보낸다.
     landing = browser.get(reverse("api:v1:course-detail", args=[course.slug]))
@@ -194,8 +183,69 @@ def test_closed_course_blocks_new_submissions(browser, course, payload, state, c
     )
 
     # Then 화면과 API가 같은 이유로 접수를 막는다.
-    assert landing.json()["intake"] == {"label": label, "code": code}
-    assert response.status_code == 409 and response.json()["code"] == code
+    assert landing.json()["intake"] == {
+        "label": "신청 기간 종료", "code": "APPLICATION_DEADLINE_PASSED",
+    }
+    assert response.status_code == 409
+    assert response.json()["code"] == "APPLICATION_DEADLINE_PASSED"
+    assert not course.applications.exists()
+
+
+def test_public_intake_remains_open_when_pending_applications_reach_capacity(browser, course, payload):
+    # Given 교육 정원과 같은 수의 신청이 이미 접수됐다.
+    url = reverse("api:v1:application-list")
+    headers = {"X-CSRFToken": browser.cookies["csrftoken"].value}
+    first = browser.post(url, payload, content_type="application/json", headers=headers)
+    assert first.status_code == 201
+    assert course.applications.count() == course.capacity
+
+    # When 교육 상세를 조회하고 다른 제출 식별자로 신청한다.
+    landing = browser.get(reverse("api:v1:course-detail", args=[course.slug]))
+    second = browser.post(
+        url, {**payload, "submission_id": str(uuid4())}, content_type="application/json",
+        headers=headers,
+    )
+
+    # Then 상세에서도 접수 가능으로 표시되며 추가 신청이 저장된다.
+    assert landing.json()["capacity"] == 1
+    assert landing.json()["intake"]["code"] == "OPEN"
+    assert second.status_code == 201
+    assert second.json()["id"] != first.json()["id"]
+    assert course.applications.count() == 2
+
+
+def test_public_intake_closes_at_completed_capacity_and_reopens(browser, admin_client, course, payload):
+    # Given a pending application for a course with a capacity of one.
+    submit_url = reverse("api:v1:application-list")
+    headers = {"X-CSRFToken": browser.cookies["csrftoken"].value}
+    first = browser.post(submit_url, payload, content_type="application/json", headers=headers)
+    assert first.status_code == 201
+    application_url = reverse("api:v1:application-detail", args=[first.json()["id"]])
+    course_url = reverse("api:v1:course-detail", args=[course.slug])
+    next_payload = {**payload, "submission_id": str(uuid4())}
+
+    # When the operator completes the application, then moves it back to review.
+    completed = admin_client.patch(
+        application_url, {"status": ApplicationStatus.COMPLETED}, content_type="application/json",
+    )
+    full = browser.get(course_url)
+    blocked = browser.post(submit_url, next_payload, content_type="application/json", headers=headers)
+    replay = browser.post(submit_url, payload, content_type="application/json", headers=headers)
+    reopened = admin_client.patch(
+        application_url, {"status": ApplicationStatus.IN_REVIEW}, content_type="application/json",
+    )
+    open_course = browser.get(course_url)
+    accepted = browser.post(submit_url, next_payload, content_type="application/json", headers=headers)
+
+    # Then a full course blocks new applications until the completed count drops.
+    assert completed.status_code == reopened.status_code == 200
+    assert full.json()["intake"] == {"code": "COURSE_FULL", "label": "정원 마감"}
+    assert blocked.status_code == 409
+    assert blocked.json() == {"code": "COURSE_FULL", "message": "정원 마감"}
+    assert replay.status_code == 200 and replay.json()["id"] == first.json()["id"]
+    assert open_course.json()["intake"]["code"] == "OPEN"
+    assert accepted.status_code == 201
+    assert course.applications.count() == 2
 
 
 def test_list_requires_permission_and_excludes_personal_fields(

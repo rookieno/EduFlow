@@ -80,13 +80,13 @@ def test_staff_list_shell_and_json_enforce_permissions(client, django_user_model
 def test_staff_crud_uses_api_and_keeps_course_and_receipt_readonly(
     admin_client, application_form, course,
 ):
-    # Given one seat in the course.
+    # Given a course with a planned capacity of one.
     add = reverse("api:v1:application-staff-create")
 
     # When staff create, read, edit, and delete through the JSON API.
     created = admin_client.post(add, application_form, content_type="application/json")
     application = Application.objects.get()
-    full = admin_client.post(
+    second = admin_client.post(
         add, {**application_form, "submission_id": str(uuid4())},
         content_type="application/json",
     )
@@ -101,9 +101,9 @@ def test_staff_crud_uses_api_and_keeps_course_and_receipt_readonly(
     assert Application.objects.filter(pk=application.pk).exists()
     deleted = admin_client.delete(detail)
 
-    # Then normal intake rules apply and identity stays unchanged.
-    assert created.status_code == 201
-    assert full.status_code == 409 and full.json()["code"] == "COURSE_FULL"
+    # Then staff can submit beyond capacity and the original receipt stays unchanged.
+    assert created.status_code == second.status_code == 201
+    assert second.json()["id"] != created.json()["id"]
     assert data["email"] == application_form["email"]
     assert data["address"] == application_form["address"]
     assert 'id="application-receipt" type="text" readonly' in edit_page.content.decode()
@@ -111,7 +111,7 @@ def test_staff_crud_uses_api_and_keeps_course_and_receipt_readonly(
     assert updated.status_code == 200 and updated.json()["status"] == "COMPLETED"
     assert application.course_id == course.pk and data["id"] == str(application.pk)
     assert delete_page.status_code == 200 and deleted.status_code == 204
-    assert not Application.objects.exists()
+    assert str(Application.objects.get().pk) == second.json()["id"]
 
 
 def test_api_records_completion_time_only_on_transitions(admin_client, course, monkeypatch):
@@ -155,6 +155,27 @@ def test_staff_api_rejects_closed_course(admin_client, course, application_form)
     assert response.status_code == 409
     assert response.json()["code"] == "APPLICATION_DEADLINE_PASSED"
     assert not Application.objects.exists()
+
+
+def test_staff_api_rejects_new_application_at_completed_capacity(admin_client, course, application_form):
+    # Given an application completed by an operator.
+    application = _submit(course)
+    completed = admin_client.patch(
+        reverse("api:v1:application-detail", args=[application.pk]),
+        {"status": ApplicationStatus.COMPLETED}, content_type="application/json",
+    )
+    assert completed.status_code == 200
+
+    # When staff try to create a new application for the same course.
+    response = admin_client.post(
+        reverse("api:v1:application-staff-create"), application_form,
+        content_type="application/json",
+    )
+
+    # Then the API reports the course is full and no new application is saved.
+    assert response.status_code == 409
+    assert response.json()["code"] == "COURSE_FULL"
+    assert course.applications.count() == 1
 
 
 def test_staff_session_api_logs_in_and_out_with_csrf(django_user_model):

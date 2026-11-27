@@ -3,7 +3,6 @@ from datetime import timedelta
 from threading import Barrier
 from uuid import uuid4
 
-from django.core.exceptions import ValidationError
 from django.db import connections
 from django.test import TransactionTestCase
 from django.utils import timezone
@@ -21,18 +20,20 @@ class IntakeTests(TransactionTestCase):
             slug="demo",
             title="교육",
             tagline="교육 소개",
+            curriculum=["교육 개요"],
             is_published=True,
             capacity=1,
             application_deadline_at=timezone.now() + timedelta(days=1),
         )
 
-    def test_last_place_is_allocated_only_once(self) -> None:
+    def test_concurrent_submissions_can_exceed_capacity(self) -> None:
+        # Given a published course with a planned capacity of one.
         barrier = Barrier(2, timeout=5)
 
-        def submit() -> IntakeStatus:
+        def submit() -> bool:
             try:
                 barrier.wait()
-                Application.objects.submit(
+                _, created = Application.objects.submit(
                     course_slug=self.course.slug,
                     submission_id=uuid4(),
                     name="신청자",
@@ -40,19 +41,20 @@ class IntakeTests(TransactionTestCase):
                     address="서울",
                     contact_date=timezone.localdate(),
                 )
-                return IntakeStatus.OPEN
-            except IntakeClosed as exc:
-                return exc.status
+                return created
             finally:
                 connections.close_all()
 
+        # When two applications are submitted concurrently.
         with ThreadPoolExecutor(max_workers=2) as executor:
             results = list(executor.map(lambda _: submit(), range(2)))
 
-        self.assertCountEqual(results, [IntakeStatus.OPEN, IntakeStatus.COURSE_FULL])
-        self.assertEqual(self.course.applications.count(), 1)
+        # Then both are recorded and intake remains open.
+        self.assertEqual(results, [True, True])
+        self.assertEqual(self.course.applications.count(), 2)
+        self.assertEqual(self.course.intake_status(), IntakeStatus.OPEN)
 
-    def test_deadline_precedes_capacity_and_existing_submission_can_replay(self) -> None:
+    def test_deadline_closes_intake_and_existing_submission_can_replay(self) -> None:
         payload = {
             "course_slug": self.course.slug,
             "submission_id": uuid4(),
@@ -76,7 +78,8 @@ class IntakeTests(TransactionTestCase):
             Application.objects.submit(**{**payload, "submission_id": uuid4()})
         self.assertEqual(caught.exception.status, IntakeStatus.APPLICATION_DEADLINE_PASSED)
 
-    def test_capacity_cannot_drop_below_accepted_applications(self) -> None:
+    def test_capacity_can_drop_below_the_application_count(self) -> None:
+        # Given two stored applications for a course with a planned capacity of two.
         self.course.capacity = 2
         self.course.save(update_fields=["capacity"])
         for _ in range(2):
@@ -88,8 +91,12 @@ class IntakeTests(TransactionTestCase):
                 address="서울",
                 contact_date=timezone.localdate(),
             )
+        # When the planned capacity is reduced.
         self.course.capacity = 1
-        with self.assertRaises(ValidationError):
-            self.course.save(update_fields=["capacity"])
+        self.course.full_clean()
+        self.course.save(update_fields=["capacity"])
+
+        # Then both existing applications are retained.
         self.course.refresh_from_db()
-        self.assertEqual(self.course.capacity, 2)
+        self.assertEqual(self.course.capacity, 1)
+        self.assertEqual(self.course.applications.count(), 2)
