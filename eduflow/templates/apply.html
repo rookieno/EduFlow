@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}교육 신청 · EduFlow{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'public.js' %}"></script>{% endblock %}
+{% block content %}
+<section class="application" data-public-page="apply" data-slug="{{ slug }}">
+  <a class="back" href="{% url 'course-detail' slug %}">← 교육 소개</a>
+  <h1>교육 신청</h1>
+  <p class="lead" data-title></p>
+  <p data-loading role="status">교육을 불러오는 중입니다.</p>
+  <p class="error" data-error role="alert" hidden></p>
+  <p class="notice" data-intake role="status" hidden></p>
+  <div class="card result" data-confirmation tabindex="-1" hidden>
+    <h2>신청이 접수되었습니다.</h2>
+  </div>
+  <form class="card form" data-apply-form method="post" hidden>
+    <p class="form-note">신청 정보는 교육 접수와 안내에 사용됩니다. 모든 항목을 입력해 주세요.</p>
+    <p class="error" data-form-error role="alert" hidden></p>
+    <div class="form-grid">
+      <div><label for="name">이름</label><input id="name" name="name" autocomplete="name" required maxlength="100"></div>
+      <div><label for="email">이메일</label><input type="email" id="email" name="email" autocomplete="email" required maxlength="254"></div>
+      <div class="full"><label for="address">주소</label><input id="address" name="address" autocomplete="street-address" required maxlength="500"></div>
+      <div><label for="contact_date">연락 가능 날짜</label><input type="date" id="contact_date" name="contact_date" required></div>
+    </div>
+    <button class="button" type="submit">신청 제출 <span aria-hidden="true">→</span></button>
+  </form>
+</section>
+{% endblock %}

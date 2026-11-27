@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load static %}
+{% block scripts %}<script type="module" src="{% static 'public.js' %}"></script>{% endblock %}
+{% block content %}
+<section class="catalog" data-public-page="catalog">
+  <h1 class="visually-hidden">교육 목록</h1>
+  <p data-loading role="status">교육을 불러오는 중입니다.</p>
+  <p class="error" data-error role="alert" hidden></p>
+  <div class="catalog-grid" data-courses></div>
+</section>
+{% endblock %}

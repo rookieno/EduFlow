@@ -1,0 +1,54 @@
+{% extends "staff/base.html" %}
+{% block title %}신청 관리 · EduFlow{% endblock %}
+{% block body_attrs %} class="staff-list-page"{% endblock %}
+{% block staff_content %}
+<div data-staff-page="list">
+  <div class="staff-toolbar">
+    <h1 class="visually-hidden">신청 관리</h1>
+    <div class="staff-actions staff-list-actions">
+      {% if perms.applications.export_application %}
+        <button class="button staff-export-button" type="button" data-export>Google Sheets로 내보내기</button>
+      {% endif %}
+      <a class="button" href="{% url 'staff:application-create' %}" data-add hidden>신청 등록</a>
+    </div>
+  </div>
+  <form class="card staff-filters" method="get" data-staff-filters>
+    <div class="staff-search">
+      <label for="q">검색</label>
+      <input id="q" name="q" type="search" placeholder="접수번호, 이름, 이메일" maxlength="254">
+    </div>
+    <div><label for="course">교육</label><select id="course" name="course"><option value="">전체 교육</option></select></div>
+    <div>
+      <label for="status">신청 상태</label>
+      <select id="status" name="status">
+        <option value="">전체 상태</option>
+        <option value="RECEIVED">접수</option><option value="IN_REVIEW">확인중</option><option value="COMPLETED">완료</option>
+      </select>
+    </div>
+    <fieldset class="staff-date-range">
+      <legend class="visually-hidden">연락 가능일</legend>
+      <div><label for="contact_date_from">연락 가능일 시작</label><input id="contact_date_from" name="contact_date_from" type="date"></div>
+      <div><label for="contact_date_to">연락 가능일 종료</label><input id="contact_date_to" name="contact_date_to" type="date"></div>
+    </fieldset>
+    <div class="staff-filter-actions">
+      <button class="button" type="submit">조회</button>
+      <a class="staff-filter-reset" href="{% url 'staff:application-list' %}">초기화</a>
+    </div>
+  </form>
+  <p class="error" data-error role="alert" hidden></p>
+  <p class="staff-count" data-export-result role="status" hidden></p>
+  <div data-staff-results aria-live="polite">
+    <p class="staff-count" data-count role="status">신청 목록을 불러오는 중입니다.</p>
+    <div class="card staff-table">
+      <table>
+        <caption class="visually-hidden">교육 신청 목록</caption>
+        <thead>
+          <tr><th scope="col">접수번호</th><th scope="col">교육</th><th scope="col">이름</th><th scope="col">이메일</th><th scope="col">상태</th><th scope="col">연락 가능일</th><th scope="col">접수 시각</th><th scope="col">완료 시각</th></tr>
+        </thead>
+        <tbody data-rows></tbody>
+      </table>
+    </div>
+    <nav class="staff-pagination" aria-label="신청 목록 페이지" data-pages hidden></nav>
+  </div>
+</div>
+{% endblock %}

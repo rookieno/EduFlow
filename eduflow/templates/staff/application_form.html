@@ -1,0 +1,31 @@
+{% extends "staff/base.html" %}
+{% block title %}{% if editing %}신청 수정{% else %}신청 등록{% endif %} · EduFlow{% endblock %}
+{% block staff_content %}
+  <div class="staff-panel" data-staff-page="{% if editing %}edit{% else %}create{% endif %}"{% if editing %} data-id="{{ pk }}"{% endif %}>
+    <h1>{% if editing %}신청 수정{% else %}신청 등록{% endif %}</h1>
+    <p data-loading role="status">신청 정보를 불러오는 중입니다.</p>
+    <p class="error" data-error role="alert" hidden></p>
+    <form class="card form staff-form" method="post" hidden>
+      {% if editing %}
+        <p><label for="application-receipt">접수번호</label><input id="application-receipt" type="text" readonly></p>
+        <p><label for="application-course">교육</label><input id="application-course" type="text" readonly></p>
+      {% else %}
+        <p><label for="course_slug">교육</label><select name="course_slug" id="course_slug" required><option value="">교육 선택</option></select></p>
+      {% endif %}
+      <p><label for="name">이름</label><input id="name" name="name" maxlength="100" required></p>
+      <p><label for="email">이메일</label><input id="email" name="email" type="email" maxlength="254" required></p>
+      <p><label for="address">주소</label><input id="address" name="address" maxlength="500" required></p>
+      <p><label for="contact_date">연락 가능일</label><input id="contact_date" name="contact_date" type="date" required></p>
+      {% if editing %}
+        <p><label for="status">신청 상태</label><select id="status" name="status">
+          <option value="RECEIVED">접수</option><option value="IN_REVIEW">확인중</option><option value="COMPLETED">완료</option>
+        </select></p>
+      {% endif %}
+      <div class="staff-actions">
+        <button class="button" type="submit">저장</button>
+        {% if editing %}<a href="{% url 'staff:application-detail' pk %}">취소</a>
+        {% else %}<a href="{% url 'staff:application-list' %}">취소</a>{% endif %}
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "staff/base.html" %}
+{% block title %}신청 상세 · EduFlow{% endblock %}
+{% block staff_content %}
+<div data-staff-page="detail" data-id="{{ pk }}">
+  <h1>신청 상세</h1>
+  <p data-loading role="status">신청 정보를 불러오는 중입니다.</p>
+  <p class="error" data-error role="alert" hidden></p>
+  <dl class="card staff-details" data-detail hidden>
+    <div><dt>접수번호</dt><dd data-value="id"></dd></div>
+    <div><dt>교육</dt><dd data-value="course_title"></dd></div>
+    <div><dt>상태</dt><dd data-value="status_label"></dd></div>
+    <div><dt>이름</dt><dd data-value="name"></dd></div>
+    <div><dt>이메일</dt><dd data-value="email"></dd></div>
+    <div><dt>주소</dt><dd data-value="address"></dd></div>
+    <div><dt>연락 가능일</dt><dd data-value="contact_date"></dd></div>
+    <div><dt>접수 시각</dt><dd data-value="created_at"></dd></div>
+    <div><dt>완료 시각</dt><dd data-value="completed_at"></dd></div>
+    {% if perms.applications.view_applicationreminder %}
+      <div><dt>최근 메일 발송 상태</dt><dd data-mail-status></dd></div>
+    {% endif %}
+  </dl>
+  <div class="staff-actions">
+    <a class="button" href="{% url 'staff:application-update' pk %}" data-edit hidden>수정</a>
+    <a class="staff-danger" href="{% url 'staff:application-delete' pk %}" data-delete hidden>삭제</a>
+  </div>
+</div>
+{% endblock %}

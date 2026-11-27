@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}교육 소개 · EduFlow{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'public.js' %}"></script>{% endblock %}
+{% block content %}
+<section data-public-page="course" data-slug="{{ slug }}">
+  <p data-loading role="status">교육을 불러오는 중입니다.</p>
+  <p class="error" data-error role="alert" hidden></p>
+  <div data-content hidden>
+    <section class="hero">
+      <div class="hero-content">
+        <h1 data-title></h1>
+        <p class="lead" data-tagline></p>
+        <a class="button" data-apply hidden>교육 신청하기 <span aria-hidden="true">→</span></a>
+        <p class="notice" data-intake role="status" hidden></p>
+      </div>
+      <div data-image></div>
+    </section>
+    <dl class="course-facts card">
+      <div><dt>신청 정원</dt><dd data-capacity></dd></div>
+      <div><dt>접수 마감 · 한국 시간</dt><dd data-deadline></dd></div>
+    </dl>
+    <section class="curriculum">
+      <h2>커리큘럼</h2>
+      <ol class="card lesson-list" data-curriculum></ol>
+    </section>
+  </div>
+</section>
+{% endblock %}

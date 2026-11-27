@@ -1,0 +1,22 @@
+{% extends "staff/base.html" %}
+{% block title %}메일 발송 내역 상세 · EduFlow{% endblock %}
+{% block staff_content %}
+<div data-staff-page="mail-delivery-detail" data-id="{{ pk }}">
+  <a class="back" href="{% url 'staff:mail-delivery-list' %}">메일 발송 내역으로</a>
+  <h1 class="staff-list-title">메일 발송 내역 상세</h1>
+  <p data-loading role="status">메일 발송 내역을 불러오는 중입니다.</p>
+  <p class="error" data-error role="alert" hidden></p>
+  <dl class="card staff-details" data-detail hidden>
+    <div><dt>접수번호</dt><dd><a data-application-link></a></dd></div>
+    <div><dt>교육</dt><dd data-value="course_title"></dd></div>
+    <div><dt>현재 수신 이메일</dt><dd data-value="current_recipient_email"></dd></div>
+    <div><dt>안내 종류</dt><dd data-value="kind_label"></dd></div>
+    <div><dt>발송 상태</dt><dd data-value="status_label"></dd></div>
+    <div><dt>예약 시각</dt><dd data-value="scheduled_at"></dd></div>
+    <div><dt>발송 완료 시각</dt><dd data-value="sent_at"></dd></div>
+    <div><dt>다음 시도 시각</dt><dd data-value="next_attempt_at"></dd></div>
+    <div><dt>시도 횟수</dt><dd data-value="attempt_count"></dd></div>
+    <div><dt>최근 오류</dt><dd data-value="last_error_code"></dd></div>
+  </dl>
+</div>
+{% endblock %}

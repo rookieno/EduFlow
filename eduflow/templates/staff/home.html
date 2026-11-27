@@ -1,0 +1,10 @@
+{% extends "staff/base.html" %}
+{% block title %}운영자 대시보드 · EduFlow{% endblock %}
+{% block body_attrs %} class="staff-list-page"{% endblock %}
+{% block staff_content %}
+  <div data-staff-page="home">
+    <p data-loading role="status">신청 현황을 불러오는 중입니다.</p>
+    <p class="error" data-error role="alert" hidden></p>
+    <div class="staff-summary" data-summary></div>
+  </div>
+{% endblock %}

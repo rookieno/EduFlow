@@ -1,0 +1,13 @@
+{% extends "staff/base.html" %}
+{% block title %}운영자 로그인 · EduFlow{% endblock %}
+{% block staff_content %}
+  <div class="staff-panel" data-staff-page="login">
+    <h1>운영자 로그인</h1>
+    <p class="error" data-error role="alert" hidden></p>
+    <form class="card form staff-form" method="post">
+      <p><label for="username">사용자 이름</label><input id="username" name="username" autocomplete="username" required></p>
+      <p><label for="password">비밀번호</label><input id="password" name="password" type="password" autocomplete="current-password" required></p>
+      <button class="button" type="submit">로그인</button>
+    </form>
+  </div>
+{% endblock %}
