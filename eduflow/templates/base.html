@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}EduFlow{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'eduflow.css' %}">
+  {% block scripts %}{% endblock %}
+</head>
+<body{% block body_attrs %}{% endblock %}>
+  <header class="header">
+    <nav class="shell nav" aria-label="주 메뉴">
+      {% block navigation %}
+      <div class="nav-menu">
+        <a class="brand" href="{% url 'home' %}"><span class="brand-mark" aria-hidden="true">↗</span> EduFlow</a>
+        <a class="nav-link" href="{% url 'home' %}"{% if request.resolver_match.url_name == "home" %} aria-current="page"{% endif %}>교육</a>
+      </div>
+      {% endblock %}
+    </nav>
+  </header>
+  <main class="shell">
+    <noscript><p class="notice">화면을 이용하려면 JavaScript를 켜 주세요.</p></noscript>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="shell footer">EduFlow</footer>
+</body>
+</html>

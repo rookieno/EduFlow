@@ -1,0 +1,3 @@
+from eduflow.apps.courses.models.course import Course
+
+__all__ = ["Course"]

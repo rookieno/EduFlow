@@ -1,0 +1,48 @@
+{% extends "staff/base.html" %}
+{% block title %}메일 발송 내역 · EduFlow{% endblock %}
+{% block body_attrs %} class="staff-list-page"{% endblock %}
+{% block staff_content %}
+<div data-staff-page="mail-deliveries">
+  <h1 class="visually-hidden">메일 발송 내역</h1>
+  <form class="card staff-filters" method="get" data-staff-filters>
+    <div class="staff-search">
+      <label for="q">검색</label>
+      <input id="q" name="q" type="search" placeholder="접수번호, 이름, 수신 이메일" maxlength="254">
+    </div>
+    <div>
+      <label for="status">발송 상태</label>
+      <select id="status" name="status">
+        <option value="">전체 상태</option>
+        <option value="PENDING">발송 대기</option>
+        <option value="PROCESSING">발송 처리 중</option>
+        <option value="SENT">발송 완료</option>
+        <option value="CANCELLED">발송 취소</option>
+        <option value="FAILED">발송 실패</option>
+      </select>
+    </div>
+    <div class="staff-filter-actions">
+      <button class="button" type="submit">조회</button>
+      <a class="staff-filter-reset" href="{% url 'staff:mail-delivery-list' %}">초기화</a>
+    </div>
+  </form>
+  <p class="error" data-error role="alert" hidden></p>
+  <div aria-live="polite">
+    <p class="staff-count" data-count role="status">메일 발송 기록을 불러오는 중입니다.</p>
+    <div class="card staff-table">
+      <table>
+        <caption class="visually-hidden">메일 발송 기록</caption>
+        <thead>
+          <tr>
+            <th scope="col">접수번호</th><th scope="col">교육</th><th scope="col">현재 수신 이메일</th>
+            <th scope="col">안내 종류</th><th scope="col">발송 상태</th><th scope="col">예약 시각</th>
+            <th scope="col">발송 완료 시각</th><th scope="col">다음 시도</th><th scope="col">시도 횟수</th>
+            <th scope="col">최근 오류</th>
+          </tr>
+        </thead>
+        <tbody data-rows></tbody>
+      </table>
+    </div>
+    <nav class="staff-pagination" aria-label="메일 발송 목록 페이지" data-pages hidden></nav>
+  </div>
+</div>
+{% endblock %}

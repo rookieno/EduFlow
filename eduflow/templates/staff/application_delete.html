@@ -1,0 +1,16 @@
+{% extends "staff/base.html" %}
+{% block title %}신청 삭제 · EduFlow{% endblock %}
+{% block staff_content %}
+  <div class="staff-panel" data-staff-page="delete" data-id="{{ pk }}">
+    <h1>신청 삭제</h1>
+    <p data-loading role="status">신청 정보를 불러오는 중입니다.</p>
+    <p class="error" data-error role="alert" hidden></p>
+    <form class="card form" method="post" hidden>
+      <p><strong data-course-title></strong>에 대한 신청을 삭제하시겠습니까?</p>
+      <div class="staff-actions">
+        <button class="button staff-danger-button" type="submit">삭제</button>
+        <a href="{% url 'staff:application-detail' pk %}">취소</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

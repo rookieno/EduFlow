@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block scripts %}<script type="module" src="{% static 'staff.js' %}"></script>{% endblock %}
+{% block navigation %}
+  <div class="nav-menu staff-nav">
+    <a class="brand" href="{% url 'staff:home' %}">
+      <span class="brand-mark" aria-hidden="true">↗</span> EduFlow
+    </a>
+    {% if request.user.is_authenticated %}
+      <div class="staff-nav-links">
+        <a class="nav-link" href="{% url 'staff:application-list' %}"{% if request.resolver_match.view_name == "staff:application-list" %} aria-current="page"{% endif %}>신청목록</a>
+        {% if perms.applications.view_application and perms.applications.view_applicationreminder %}
+          <a class="nav-link" href="{% url 'staff:mail-delivery-list' %}"{% if request.resolver_match.view_name == "staff:mail-delivery-list" %} aria-current="page"{% endif %}>메일 발송 내역</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  {% if request.user.is_authenticated %}
+    <form class="staff-logout" method="post" data-logout>
+      <button class="staff-link" type="submit">로그아웃</button>
+    </form>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<section class="catalog">
+  {% block staff_content %}{% endblock %}
+</section>
+{% endblock %}
